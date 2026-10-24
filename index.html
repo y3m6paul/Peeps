@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素小窩 - 單機版</title>
+    <style>
+        /* 基礎樣式與像素風格設定 */
+        body {
+            background-color: #2c2c2c;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            image-rendering: pixelated; /* 讓圖片保持像素感 */
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            border: 4px solid #444;
+        }
+
+        /* 遊戲主畫面 (房間) */
+        .room {
+            width: 400px;
+            height: 400px;
+            background-color: #8b5a2b; /* 木地板顏色 */
+            position: relative;
+            border: 4px solid #000;
+            overflow: hidden;
+            /* 繪製簡單的格子 */
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* 角色 (由多個方塊疊加而成) */
+        .character {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            transition: all 0.1s;
+        }
+        .char-body {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            z-index: 1;
+            /* 用 CSS 方塊假裝像素人 */
+            background-color: #f7c5a8; 
+            border-radius: 10px 10px 0 0;
+        }
+        .char-clothes {
+            width: 80%;
+            height: 50%;
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            z-index: 2;
+            background-color: #2196F3; /* 預設藍色衣服 */
+            border-radius: 5px 5px 0 0;
+        }
+        .char-hat {
+            width: 60%;
+            height: 20%;
+            position: absolute;
+            top: -10px;
+            left: 20%;
+            z-index: 3;
+            background-color: transparent;
+        }
+
+        /* 家具 */
+        .furniture {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #666;
+            z-index: 0;
+        }
+        .bed {
+            background-color: #4a148c; /* 紫色床 */
+            width: 80px;
+            height: 60px;
+            right: 20px;
+            top: 20px;
+            border-radius: 5px;
+        }
+
+        /* UI 控制面板 */
+        .ui-panel {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+            font-weight: bold;
+            border-bottom: 4px solid #2e7d32;
+        }
+        button:active {
+            border-bottom: 0;
+            transform: translateY(4px);
+        }
+        button:disabled {
+            background-color: #666;
+            border-bottom: 4px solid #444;
+            cursor: not-allowed;
+        }
+
+        .shop-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        /* 小遊戲/任務面板 */
+        .task-panel {
+            background: #222;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .click-target {
+            width: 60px;
+            height: 60px;
+            background-color: #ff5252;
+            border-radius: 50%;
+            margin: 10px auto;
+            cursor: pointer;
+            box-shadow: 0 4px #b33939;
+        }
+        .click-target:active {
+            box-shadow: 0 0;
+            transform: translateY(4px);
+        }
+
+        /* 換裝區 */
+        .dress-up {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <!-- 遊戲主畫面 -->
+    <div class="room" id="room">
+        <div class="furniture bed" id="bed"></div>
+        
+        <!-- 角色 -->
+        <div class="character" id="player">
+            <div class="char-body" id="c-body"></div>
+            <div class="char-clothes" id="c-clothes"></div>
+            <div class="char-hat" id="c-hat"></div>
+        </div>
+    </div>
+
+    <!-- 右側 UI -->
+    <div class="ui-panel">
+        <div class="header">
+            <span>💰 金幣:</span>
+            <span id="coin-display">0</span>
+        </div>
+
+        <!-- 賺錢任務 -->
+        <div class="task-panel">
+            <div>點擊蘋果打工賺錢！</div>
+            <div class="click-target" id="work-btn"></div>
+        </div>
+
+        <!-- 商店區 -->
+        <div>
+            <h3>🛒 商店</h3>
+            <div class="shop-item">
+                <span>紅色衣服</span>
+                <button onclick="buyItem('clothes', 'red', 50)">50 幣</button>
+            </div>
+            <div class="shop-item">
+                <span>黃色帽子</span>
+                <button onclick="buyItem('hat', 'yellow', 100)">100 幣</button>
+            </div>
+        </div>
+
+        <!-- 換裝區 (已購買的才能點) -->
+        <div>
+            <h3>👕 衣櫃</h3>
+            <div class="dress-up" id="wardrobe">
+                <div class="color-btn" style="background:#2196F3;" onclick="equipItem('clothes', '#2196F3')" title="原本的藍衣"></div>
+                <!-- 買過的衣服會動態加進來 -->
+            </div>
+        </div>
+        
+        <!-- 重置按鈕 -->
+        <button onclick="resetGame()" style="background:#d32f2f; border-bottom: 4px solid #b71c1c; margin-top:auto;">重置存檔</button>
+    </div>
+</div>
+
+<script>
+    // --- 1. 遊戲狀態與儲存 ---
+    let state = {
+        coins: 0,
+        inventory: {
+            clothes: ['#2196F3'], // 預設擁有藍衣服
+            hats: []
+        },
+        equipped: {
+            clothes: '#2196F3',
+            hat: 'transparent'
+        }
+    };
+
+    // 載入存檔
+    function loadGame() {
+        const saved = localStorage.getItem('pixelRoomSave');
+        if (saved) {
+            state = JSON.parse(saved);
+        }
+        updateUI();
+    }
+
+    // 儲存進度
+    function saveGame() {
+        localStorage.setItem('pixelRoomSave', JSON.stringify(state));
+    }
+
+    // --- 2. 更新畫面 UI ---
+    function updateUI() {
+        // 更新金幣
+        document.getElementById('coin-display').innerText = state.coins;
+        
+        // 更新角色外觀
+        document.getElementById('c-clothes').style.backgroundColor = state.equipped.clothes;
+        document.getElementById('c-hat').style.backgroundColor = state.equipped.hat;
+
+        // 更新衣櫃 (動態生成按鈕)
+        const wardrobe = document.getElementById('wardrobe');
+        wardrobe.innerHTML = ''; 
+        state.inventory.clothes.forEach(color => {
+            const btn = document.createElement('div');
+            btn.className = 'color-btn';
+            btn.style.backgroundColor = color;
+            btn.onclick = () => equipItem('clothes', color);
+            wardrobe.appendChild(btn);
+        });
+    }
+
+    // --- 3. 核心功能 ---
+
+    // 打工賺錢
+    document.getElementById('work-btn').addEventListener('click', () => {
+        state.coins += 10; // 每次點擊加 10 塊
+        saveGame();
+        updateUI();
+        
+        // 小動畫：角色跳一下
+        const player = document.getElementById('player');
+        player.style.transform = 'translateY(-10px)';
+        setTimeout(() => player.style.transform = 'translateY(0)', 100);
+    });
+
+    // 購買物品
+    function buyItem(type, color, price) {
+        if (state.coins >= price) {
+            state.coins -= price;
+            
+            if (type === 'clothes') {
+                state.inventory.clothes.push(color);
+            } else if (type === 'hat') {
+                state.inventory.hats.push(color);
+            }
+            
+            alert('購買成功！');
+            saveGame();
+            updateUI();
+        } else {
+            alert('金幣不足！去點擊蘋果打工吧！');
+        }
+    }
+
+    // 裝備物品
+    function equipItem(type, color) {
+        state.equipped[type] = color;
+        saveGame();
+        updateUI();
+    }
+
+    // 重置遊戲 (方便測試)
+    function resetGame() {
+        if(confirm('確定要刪除存檔重新開始嗎？')) {
+            localStorage.removeItem('pixelRoomSave');
+            location.reload();
+        }
+    }
+
+    // 角色移動 (點擊房間移動)
+    document.getElementById('room').addEventListener('click', (e) => {
+        // 計算點擊位置相對於房間的座標
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const player = document.getElementById('player');
+        // 讓角色平滑移動到點擊位置
+        player.style.left = `${x - 20}px`; // 減去角色寬度的一半，讓中心對準
+        player.style.bottom = `${400 - y - 20}px`; // Y軸反轉
+    });
+
+    // 初始化遊戲
+    loadGame();
+</script>
+
+</body>
+</html>
